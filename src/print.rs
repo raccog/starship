@@ -114,7 +114,8 @@ pub fn get_prompt(context: Context) -> String {
     );
 
     let module_strings = root_module.ansi_strings_for_shell(context.shell, Some(context.width));
-    if config.add_newline {
+    if config.add_newline && !context.continuation {
+        // continuation prompts normally do not include newlines, but they can
         writeln!(buf).unwrap();
     }
     write!(buf, "{}", ANSIStrings(&module_strings)).unwrap();
@@ -416,19 +417,26 @@ fn load_formatter_and_modules<'a>(context: &'a Context) -> (StringFormatter<'a>,
 
     let lformatter = StringFormatter::new(&config.format);
     let rformatter = StringFormatter::new(&config.right_format);
+    let cformatter = StringFormatter::new(&config.continuation_format);
     if lformatter.is_err() {
         log::error!("Error parsing `format`")
     }
     if rformatter.is_err() {
         log::error!("Error parsing `right_format`")
     }
+    if cformatter.is_err() {
+        log::error!("Error parsing `continuation_format`")
+    }
 
-    match (lformatter, rformatter) {
-        (Ok(lf), Ok(rf)) => {
+    match (lformatter, rformatter, cformatter) {
+        (Ok(lf), Ok(rf), Ok(cf)) => {
             let mut modules: BTreeSet<String> = BTreeSet::new();
             modules.extend(lf.get_variables());
             modules.extend(rf.get_variables());
-            if context.right {
+            if context.continuation {
+                modules.extend(cf.get_variables());
+                (cf, modules)
+            } else if context.right {
                 (rf, modules)
             } else {
                 (lf, modules)
