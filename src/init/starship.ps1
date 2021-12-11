@@ -106,6 +106,12 @@ function global:prompt {
     # Invoke Starship
     Invoke-Native -Executable ::STARSHIP:: -Arguments $arguments
 
+    # Invoke Starship to set continuation prompt
+    $OutputEncoding = [System.Console]::OutputEncoding = [System.Console]::InputEncoding = [System.Text.Encoding]::UTF8
+    $arguments += "--continuation"
+    $continuation = Invoke-Native -Executable ::STARSHIP:: -Arguments $arguments
+    Set-PSReadLineOption -ContinuationPrompt $continuation
+
     # Propagate the original $LASTEXITCODE from before the prompt function was invoked.
     $global:LASTEXITCODE = $origLastExitCode
 
